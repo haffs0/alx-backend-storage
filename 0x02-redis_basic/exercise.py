@@ -2,7 +2,35 @@
 """Redis basic"""
 import redis
 import uuid
-from typing import Union, Callable
+from typing import Union, Callable, Any
+from functools import wraps
+
+
+def call_history(method: Callable) -> Callable:
+    """tracks call details of method in Cache class"""
+    @wraps(method)
+    def invoker(self, *args, **kwargs) -> Any:
+        """return the output and store its input"""
+        in_key = '{}:inputs'.format(method.__qualname__)
+        out_key = '{}:outputs'.format(method.__qualname__)
+        if isinstance(self._redis, redis.Redis):
+            self._redis.rpush(in_key, str(args))
+        output = method(self, *args, **kwargs)
+        if isinstance(self._redis, redis.Redis):
+            self._redis.rpush(out_key, output)
+        return output
+    return invoker
+
+
+def count_calls(method: Callable) -> Callable:
+    """count the number of calls made on the method"""
+    @wraps(method)
+    def invoker(self, *args, **kwargs) -> Any:
+        """invoker the method"""
+        if isinstance(self._redis, redis.Redis):
+            self._redis.incr(method.__qualname__)
+        return method(self, *args, **kwargs)
+    return invoker
 
 
 class Cache:
@@ -12,6 +40,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb(True)
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """stores a value in redis and return the key."""
         data_key = str(uuid.uuid4())
