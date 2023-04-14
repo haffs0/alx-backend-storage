@@ -23,9 +23,7 @@ def logs_stats(mongo_collection):
     print(f"{total_file_size} logs")
     print("Methods:")
     for method in log_info.keys():
-        str_res = f"\tmethod {method}: {log_info[method]}"
-        result = str_res.expandtabs(4)
-        print(result)
+        print(f"\tmethod {method}: {log_info[method]}")
     print(f"{status_count} status check")
 
 
